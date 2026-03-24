@@ -615,7 +615,12 @@ const router = createRouter({ routeTree });
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 1000 * 60 * 5, retry: 1 },
+    queries: {
+      staleTime: 1000 * 60 * 10, // 10 minutes
+      gcTime: 1000 * 60 * 30, // 30 minutes — keep cache when navigating
+      retry: 1,
+      refetchOnWindowFocus: false, // no unnecessary refetch on tab switch
+    },
   },
 });
 

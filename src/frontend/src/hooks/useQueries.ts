@@ -24,6 +24,7 @@ export function useGetCallerUserProfile() {
     },
     enabled: !!actor && !actorFetching,
     retry: false,
+    staleTime: 1000 * 60 * 10,
   });
 
   return {
@@ -86,7 +87,7 @@ export function useGetAvailableDonationsForVolunteers() {
       return actor.getAvailableDonationsForVolunteers();
     },
     enabled: !!actor && !isFetching,
-    refetchInterval: 15000,
+    refetchInterval: 30000,
   });
 }
 
@@ -206,6 +207,8 @@ export function useGetAllNgos() {
       return actor.getAllNgosSortedByRating();
     },
     enabled: !!actor && !isFetching,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: Number.POSITIVE_INFINITY,
   });
 }
 
@@ -219,6 +222,8 @@ export function useGetNgosByCity(city: string) {
       return actor.getNgosByCity(city);
     },
     enabled: !!actor && !isFetching && !!city,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: Number.POSITIVE_INFINITY,
   });
 }
 
@@ -265,6 +270,8 @@ export function useGetAllVolunteers() {
       return actor.getAllVolunteersSortedByName();
     },
     enabled: !!actor && !isFetching,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: Number.POSITIVE_INFINITY,
   });
 }
 
@@ -278,6 +285,8 @@ export function useGetVolunteersByCity(city: string) {
       return actor.getVolunteersByCity(city);
     },
     enabled: !!actor && !isFetching && !!city,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: Number.POSITIVE_INFINITY,
   });
 }
 
@@ -293,6 +302,17 @@ export function useGetImpactCounters() {
       return actor.getImpactCounters();
     },
     enabled: !!actor && !isFetching,
+    staleTime: 1000 * 60 * 5,
+    placeholderData: {
+      totalMealsSaved: BigInt(50000),
+      totalPeopleFed: BigInt(25000),
+      co2Reduced: 12500.0,
+      cityBreakdown: [
+        ["Mumbai", BigInt(30000)],
+        ["Pune", BigInt(15000)],
+        ["Nagpur", BigInt(5000)],
+      ],
+    },
   });
 }
 

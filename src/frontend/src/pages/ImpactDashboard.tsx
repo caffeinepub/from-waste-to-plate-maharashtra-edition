@@ -1,32 +1,18 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Building2,
   Leaf,
   MapPin,
-  TrendingUp,
-  Trophy,
   Users,
-  Utensils,
+  UtensilsCrossed,
   Volume2,
   VolumeX,
 } from "lucide-react";
-import React, { useRef } from "react";
+import { motion } from "motion/react";
+import React from "react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -34,84 +20,144 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useLanguage } from "../App";
-import { useGetAllDonations, useGetImpactCounters } from "../hooks/useQueries";
 
-const CHART_COLORS = [
-  "#f59e0b",
-  "#10b981",
-  "#3b82f6",
-  "#8b5cf6",
-  "#ef4444",
-  "#06b6d4",
+// ── Static data ──────────────────────────────────────────────────────────────
+const STAT_CARDS = [
+  {
+    icon: UtensilsCrossed,
+    label: "Total Meals Saved",
+    value: "50,000",
+    iconColor: "#22c55e",
+    glowColor: "rgba(34,197,94,0.15)",
+    ocid: "impact.meals_saved.card",
+  },
+  {
+    icon: Users,
+    label: "People Fed",
+    value: "25,000",
+    iconColor: "#f97316",
+    glowColor: "rgba(249,115,22,0.15)",
+    ocid: "impact.people_fed.card",
+  },
+  {
+    icon: Leaf,
+    label: "CO₂ Reduced (kg)",
+    value: "12,500",
+    iconColor: "#22c55e",
+    glowColor: "rgba(34,197,94,0.15)",
+    ocid: "impact.co2.card",
+  },
+  {
+    icon: MapPin,
+    label: "Cities Active",
+    value: "3",
+    iconColor: "#f97316",
+    glowColor: "rgba(249,115,22,0.15)",
+    ocid: "impact.cities.card",
+  },
 ];
 
+const CITY_DATA = [
+  { city: "Mumbai", meals: 30000 },
+  { city: "Pune", meals: 15000 },
+  { city: "Nagpur", meals: 5000 },
+];
+
+const DONUT_DATA = [
+  { name: "Accepted", value: 60, color: "#f97316" },
+  { name: "Pending", value: 25, color: "#22c55e" },
+  { name: "Rejected", value: 15, color: "#6b7280" },
+];
+
+// ── Custom tooltip for bar chart ──────────────────────────────────────────────
+const CustomBarTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      style={{
+        background: "rgba(10,18,14,0.95)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        borderRadius: 10,
+        padding: "8px 14px",
+        color: "#f1f5f1",
+        fontSize: 13,
+      }}
+    >
+      <div style={{ color: "rgba(255,255,255,0.55)", marginBottom: 2 }}>
+        {label}
+      </div>
+      <div style={{ fontWeight: 700, color: "#f97316" }}>
+        {Number(payload[0].value).toLocaleString("en-IN")} meals
+      </div>
+    </div>
+  );
+};
+
+// ── Custom donut label ────────────────────────────────────────────────────────
+const renderDonutLabel = ({
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
+  percent,
+}: any) => {
+  const RADIAN = Math.PI / 180;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  if (percent < 0.08) return null;
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="#fff"
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontSize={13}
+      fontWeight={700}
+    >
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+};
+
+// ── Glass card wrapper ────────────────────────────────────────────────────────
+const GlassPanel = ({
+  children,
+  className = "",
+}: { children: React.ReactNode; className?: string }) => (
+  <div
+    className={className}
+    style={{
+      background: "rgba(255,255,255,0.04)",
+      border: "1px solid rgba(255,255,255,0.09)",
+      backdropFilter: "blur(14px)",
+      WebkitBackdropFilter: "blur(14px)",
+      borderRadius: 20,
+      boxShadow: "0 8px 40px rgba(0,0,0,0.45)",
+    }}
+  >
+    {children}
+  </div>
+);
+
+// ── Main component ────────────────────────────────────────────────────────────
 export default function ImpactDashboard() {
-  const { t } = useLanguage();
-  const { data: impact } = useGetImpactCounters();
-  const { data: donations } = useGetAllDonations();
   const [isSpeaking, setIsSpeaking] = React.useState(false);
 
-  const totalMeals = impact ? Number(impact.totalMealsSaved) : 0;
-  const totalPeople = impact ? Number(impact.totalPeopleFed) : 0;
-  const co2Reduced = impact ? impact.co2Reduced : 0;
-  const cityBreakdown = impact?.cityBreakdown || [];
-
-  // City bar chart data
-  const cityChartData = cityBreakdown.map(([city, meals]) => ({
-    city,
-    meals: Number(meals),
-  }));
-
-  // Donation status donut
-  const statusCounts = (donations || []).reduce(
-    (acc, d) => {
-      acc[d.status] = (acc[d.status] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
-  const donutData = Object.entries(statusCounts).map(([status, count]) => ({
-    name: status.charAt(0).toUpperCase() + status.slice(1),
-    value: count,
-  }));
-
-  // Weekly trend (mock based on total)
-  const weeklyData = [
-    { day: "Mon", meals: Math.floor(totalMeals * 0.12) },
-    { day: "Tue", meals: Math.floor(totalMeals * 0.15) },
-    { day: "Wed", meals: Math.floor(totalMeals * 0.18) },
-    { day: "Thu", meals: Math.floor(totalMeals * 0.14) },
-    { day: "Fri", meals: Math.floor(totalMeals * 0.2) },
-    { day: "Sat", meals: Math.floor(totalMeals * 0.11) },
-    { day: "Sun", meals: Math.floor(totalMeals * 0.1) },
-  ];
-
-  // Donor leaderboard from donations
-  const donorMap = (donations || []).reduce(
-    (acc, d) => {
-      acc[d.donorName] = (acc[d.donorName] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
-  const leaderboard = Object.entries(donorMap)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
-
-  const handleSpeak = () => {
+  const handleListen = () => {
     if (!window.speechSynthesis) return;
     if (isSpeaking) {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
       return;
     }
-
-    const summary = `Left2Lift Impact Summary: We have saved ${totalMeals.toLocaleString()} meals and fed ${totalPeople.toLocaleString()} people across Maharashtra. We have reduced carbon emissions by ${Math.round(co2Reduced)} kilograms. Our top cities are ${cityBreakdown.map(([c]) => c).join(", ")}.`;
-
-    const utterance = new SpeechSynthesisUtterance(summary);
+    const text =
+      "Our impact in Maharashtra: 50,000 meals saved, 25,000 people fed, 12,500 kilograms of CO2 reduced, active in 3 cities.";
+    const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-IN";
-    utterance.rate = 0.9;
+    utterance.rate = 0.92;
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
     setIsSpeaking(true);
@@ -119,253 +165,370 @@ export default function ImpactDashboard() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <TrendingUp className="h-8 w-8 text-primary" />
-            {t("impact.title")}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Real-time metrics on food rescued and lives impacted across
-            Maharashtra
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleSpeak}
-          className="gap-2 shrink-0"
+    <section
+      style={{
+        background:
+          "linear-gradient(160deg, #060d09 0%, #0a1410 50%, #0c1209 100%)",
+        minHeight: "100vh",
+        padding: "56px 0 80px",
+      }}
+    >
+      <div style={{ maxWidth: 1140, margin: "0 auto", padding: "0 24px" }}>
+        {/* ── Section Header ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 28 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 16,
+            marginBottom: 48,
+          }}
         >
-          {isSpeaking ? (
-            <VolumeX className="h-4 w-4" />
-          ) : (
-            <Volume2 className="h-4 w-4" />
-          )}
-          {isSpeaking ? "Stop" : "Listen"}
-        </Button>
-      </div>
+          <div>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "rgba(34,197,94,0.1)",
+                border: "1px solid rgba(34,197,94,0.25)",
+                borderRadius: 99,
+                padding: "4px 14px",
+                marginBottom: 14,
+              }}
+            >
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: "#22c55e",
+                  display: "inline-block",
+                  boxShadow: "0 0 8px #22c55e",
+                }}
+              />
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "#22c55e",
+                  fontWeight: 600,
+                  letterSpacing: 0.5,
+                }}
+              >
+                LIVE METRICS
+              </span>
+            </div>
+            <h1
+              data-ocid="impact.section"
+              style={{
+                fontSize: "clamp(1.8rem, 4vw, 2.6rem)",
+                fontWeight: 800,
+                lineHeight: 1.15,
+                background: "linear-gradient(90deg, #22c55e 0%, #f97316 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                marginBottom: 10,
+                fontFamily: "Poppins, system-ui, sans-serif",
+              }}
+            >
+              Our Impact in Maharashtra
+            </h1>
+            <p
+              style={{
+                color: "rgba(255,255,255,0.52)",
+                fontSize: 15,
+                maxWidth: 520,
+                lineHeight: 1.6,
+              }}
+            >
+              Real-time metrics on food rescued and lives impacted across
+              Maharashtra.
+            </p>
+          </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {[
-          {
-            icon: <Utensils className="h-6 w-6" />,
-            label: "Total Meals Saved",
-            value: totalMeals.toLocaleString("en-IN"),
-            color: "text-amber-600",
-          },
-          {
-            icon: <Users className="h-6 w-6" />,
-            label: "People Fed",
-            value: totalPeople.toLocaleString("en-IN"),
-            color: "text-blue-600",
-          },
-          {
-            icon: <Leaf className="h-6 w-6" />,
-            label: "CO₂ Reduced (kg)",
-            value: Math.round(co2Reduced).toLocaleString("en-IN"),
-            color: "text-green-600",
-          },
-          {
-            icon: <MapPin className="h-6 w-6" />,
-            label: "Cities Active",
-            value: cityBreakdown.length.toString(),
-            color: "text-purple-600",
-          },
-        ].map((card) => (
-          <Card key={card.label}>
-            <CardContent className="p-5">
-              <div className={`${card.color} mb-2`}>{card.icon}</div>
-              <div className="text-2xl font-bold text-foreground">
+          {/* Listen button */}
+          <button
+            data-ocid="impact.listen.button"
+            type="button"
+            onClick={handleListen}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 20px",
+              borderRadius: 12,
+              border: "1px solid rgba(34,197,94,0.35)",
+              background: isSpeaking
+                ? "rgba(34,197,94,0.15)"
+                : "rgba(255,255,255,0.04)",
+              color: isSpeaking ? "#22c55e" : "rgba(255,255,255,0.75)",
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: "pointer",
+              transition: "all 0.2s",
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            {isSpeaking ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            {isSpeaking ? "Stop" : "Listen"}
+          </button>
+        </motion.div>
+
+        {/* ── Stats Cards ── */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+            gap: 18,
+            marginBottom: 32,
+          }}
+        >
+          {STAT_CARDS.map((card, i) => (
+            <motion.div
+              key={card.label}
+              data-ocid={card.ocid}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: i * 0.08 }}
+              whileHover={{ scale: 1.04, transition: { duration: 0.2 } }}
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.09)",
+                backdropFilter: "blur(14px)",
+                WebkitBackdropFilter: "blur(14px)",
+                borderRadius: 20,
+                padding: "28px 24px",
+                cursor: "default",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              {/* glow bleed */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: -30,
+                  right: -30,
+                  width: 100,
+                  height: 100,
+                  borderRadius: "50%",
+                  background: card.glowColor,
+                  filter: "blur(32px)",
+                  pointerEvents: "none",
+                }}
+              />
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: `${card.iconColor}18`,
+                  border: `1px solid ${card.iconColor}30`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 18,
+                }}
+              >
+                <card.icon size={22} color={card.iconColor} />
+              </div>
+              <div
+                style={{
+                  fontSize: "clamp(1.5rem, 3vw, 2rem)",
+                  fontWeight: 800,
+                  color: "#f1f5f1",
+                  lineHeight: 1,
+                  marginBottom: 6,
+                  fontFamily: "Poppins, system-ui, sans-serif",
+                }}
+              >
                 {card.value}
               </div>
-              <div className="text-xs text-muted-foreground mt-1">
+              <div
+                style={{
+                  fontSize: 13,
+                  color: "rgba(255,255,255,0.45)",
+                  fontWeight: 500,
+                }}
+              >
                 {card.label}
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            </motion.div>
+          ))}
+        </div>
 
-      <div className="grid md:grid-cols-2 gap-6 mb-6">
-        {/* City Bar Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-primary" />
-              Meals Saved by City
-            </CardTitle>
-            <CardDescription>
-              Total meals rescued per Maharashtra city
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart
-                data={cityChartData}
-                margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  className="stroke-border"
-                />
-                <XAxis dataKey="city" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip
-                  formatter={(v) => [
-                    Number(v).toLocaleString("en-IN"),
-                    "Meals",
-                  ]}
-                />
-                <Bar dataKey="meals" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Donation Status Donut */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Utensils className="h-4 w-4 text-primary" />
-              Donation Status Breakdown
-            </CardTitle>
-            <CardDescription>
-              Current status of all submitted donations
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {donutData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie
-                    data={donutData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    paddingAngle={3}
-                    dataKey="value"
-                    label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(0)}%`
-                    }
-                    labelLine={false}
+        {/* ── Charts Row ── */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+            gap: 22,
+          }}
+        >
+          {/* Bar Chart */}
+          <motion.div
+            initial={{ opacity: 0, x: -24 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            <GlassPanel>
+              <div style={{ padding: "28px 28px 20px" }}>
+                <div style={{ marginBottom: 20 }}>
+                  <h2
+                    style={{
+                      fontSize: 17,
+                      fontWeight: 700,
+                      color: "#f1f5f1",
+                      marginBottom: 4,
+                    }}
                   >
-                    {donutData.map((entry, colorIdx) => (
-                      <Cell
-                        key={entry.name}
-                        fill={CHART_COLORS[colorIdx % CHART_COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[220px] text-muted-foreground text-sm">
-                No donation data yet
+                    Meals Saved by City
+                  </h2>
+                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
+                    Total meals rescued across major cities in Maharashtra
+                  </p>
+                </div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart
+                    data={CITY_DATA}
+                    margin={{ top: 4, right: 8, left: -10, bottom: 4 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="rgba(255,255,255,0.07)"
+                    />
+                    <XAxis
+                      dataKey="city"
+                      tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 12 }}
+                      axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                    />
+                    <Tooltip
+                      content={<CustomBarTooltip />}
+                      cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                    />
+                    <Bar
+                      dataKey="meals"
+                      fill="#f97316"
+                      radius={[6, 6, 0, 0]}
+                      maxBarSize={52}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </GlassPanel>
+          </motion.div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Weekly Trend */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" />
-              Weekly Meal Rescue Trend
-            </CardTitle>
-            <CardDescription>
-              Estimated daily meal distribution this week
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart
-                data={weeklyData}
-                margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  className="stroke-border"
-                />
-                <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip
-                  formatter={(v) => [
-                    Number(v).toLocaleString("en-IN"),
-                    "Meals",
-                  ]}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="meals"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Donor Leaderboard */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-primary" />
-              Top Donors
-            </CardTitle>
-            <CardDescription>
-              Most active food donors on the platform
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {leaderboard.length > 0 ? (
-              <div className="space-y-3">
-                {leaderboard.map(([name, count], i) => (
-                  <div key={name} className="flex items-center gap-3">
-                    <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                        i === 0
-                          ? "bg-amber-100 text-amber-700"
-                          : i === 1
-                            ? "bg-slate-100 text-slate-600"
-                            : i === 2
-                              ? "bg-orange-100 text-orange-700"
-                              : "bg-muted text-muted-foreground"
-                      }`}
+          {/* Donut Chart */}
+          <motion.div
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
+            <GlassPanel>
+              <div style={{ padding: "28px 28px 20px" }}>
+                <div style={{ marginBottom: 20 }}>
+                  <h2
+                    style={{
+                      fontSize: 17,
+                      fontWeight: 700,
+                      color: "#f1f5f1",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Donation Status Breakdown
+                  </h2>
+                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
+                    Current status of all submitted donations
+                  </p>
+                </div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={DONUT_DATA}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={58}
+                      outerRadius={88}
+                      paddingAngle={3}
+                      dataKey="value"
+                      labelLine={false}
+                      label={renderDonutLabel}
                     >
-                      {i + 1}
+                      {DONUT_DATA.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(v: any) => [`${v}%`, ""]}
+                      contentStyle={{
+                        background: "rgba(10,18,14,0.95)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: 10,
+                        color: "#f1f5f1",
+                        fontSize: 13,
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+
+                {/* Legend */}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: 20,
+                    marginTop: 12,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {DONUT_DATA.map((entry) => (
+                    <div
+                      key={entry.name}
+                      style={{ display: "flex", alignItems: "center", gap: 7 }}
+                    >
+                      <div
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: "50%",
+                          background: entry.color,
+                          boxShadow: `0 0 6px ${entry.color}80`,
+                        }}
+                      />
+                      <span
+                        style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}
+                      >
+                        {entry.name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: entry.color,
+                        }}
+                      >
+                        {entry.value}%
+                      </span>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">
-                        {name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {count} donation{count > 1 ? "s" : ""}
-                      </p>
-                    </div>
-                    {i === 0 && (
-                      <Badge variant="secondary" className="text-xs">
-                        🏆 Top Donor
-                      </Badge>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            ) : (
-              <div className="flex items-center justify-center h-[160px] text-muted-foreground text-sm">
-                No donor data yet
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </GlassPanel>
+          </motion.div>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

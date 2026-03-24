@@ -13,8 +13,7 @@ import {
 
 export default function NgoLogin() {
   const navigate = useNavigate();
-  const { login, clear, loginStatus, identity, isInitializing } =
-    useInternetIdentity();
+  const { login, clear, loginStatus, identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [orgName, setOrgName] = useState("");
@@ -76,7 +75,8 @@ export default function NgoLogin() {
     }
   };
 
-  if (isInitializing || (isAuthenticated && profileLoading)) {
+  // Only block render if we just authenticated and are loading profile for redirect
+  if (isAuthenticated && profileLoading && !showNameForm) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
