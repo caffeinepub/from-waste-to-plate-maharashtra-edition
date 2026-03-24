@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Heart, Loader2, MapPin, Package, Star } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -12,7 +11,6 @@ import {
 } from "../hooks/useQueries";
 
 export default function NgoLogin() {
-  const navigate = useNavigate();
   const { login, clear, loginStatus, identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   const [isSettingUp, setIsSettingUp] = useState(false);
@@ -32,11 +30,11 @@ export default function NgoLogin() {
   useEffect(() => {
     if (!isAuthenticated || profileLoading || !profileFetched) return;
     if (userProfile) {
-      navigate({ to: "/ngo-dashboard" });
+      window.location.replace("/ngo-dashboard");
     } else {
       setShowNameForm(true);
     }
-  }, [isAuthenticated, userProfile, profileFetched, profileLoading, navigate]);
+  }, [isAuthenticated, userProfile, profileFetched, profileLoading]);
 
   const handleLogin = async () => {
     try {
@@ -67,16 +65,18 @@ export default function NgoLogin() {
         neighborhood: "",
         entityType: EntityType.ngo,
       });
-      navigate({ to: "/ngo-dashboard" });
+      window.location.replace("/ngo-dashboard");
     } catch (err) {
       console.error("Profile setup error:", err);
-    } finally {
       setIsSettingUp(false);
     }
   };
 
-  // Only block render if we just authenticated and are loading profile for redirect
-  if (isAuthenticated && profileLoading && !showNameForm) {
+  // Show spinner while checking profile after authentication
+  if (
+    isAuthenticated &&
+    (profileLoading || (!showNameForm && !profileFetched))
+  ) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -90,7 +90,9 @@ export default function NgoLogin() {
         <div className="max-w-6xl mx-auto px-4 py-4">
           <button
             type="button"
-            onClick={() => navigate({ to: "/login" })}
+            onClick={() => {
+              window.location.href = "/login";
+            }}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -202,7 +204,7 @@ export default function NgoLogin() {
               ) : (
                 <div className="flex items-center justify-center gap-2 text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Redirecting to dashboard…</span>
+                  <span className="text-sm">Verifying credentials…</span>
                 </div>
               )}
             </div>

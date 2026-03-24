@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Award, Bike, Clock, Loader2, Users } from "lucide-react";
+import { ArrowLeft, Loader2, MapPin, Star, Truck, Users } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { EntityType } from "../backend";
@@ -12,7 +11,6 @@ import {
 } from "../hooks/useQueries";
 
 export default function VolunteerLogin() {
-  const navigate = useNavigate();
   const { login, clear, loginStatus, identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   const [isSettingUp, setIsSettingUp] = useState(false);
@@ -32,11 +30,11 @@ export default function VolunteerLogin() {
   useEffect(() => {
     if (!isAuthenticated || profileLoading || !profileFetched) return;
     if (userProfile) {
-      navigate({ to: "/volunteer-dashboard" });
+      window.location.replace("/volunteer-dashboard");
     } else {
       setShowNameForm(true);
     }
-  }, [isAuthenticated, userProfile, profileFetched, profileLoading, navigate]);
+  }, [isAuthenticated, userProfile, profileFetched, profileLoading]);
 
   const handleLogin = async () => {
     try {
@@ -67,16 +65,18 @@ export default function VolunteerLogin() {
         neighborhood: "",
         entityType: EntityType.volunteer,
       });
-      navigate({ to: "/volunteer-dashboard" });
+      window.location.replace("/volunteer-dashboard");
     } catch (err) {
       console.error("Profile setup error:", err);
-    } finally {
       setIsSettingUp(false);
     }
   };
 
-  // Only block render if we just authenticated and are loading profile for redirect
-  if (isAuthenticated && profileLoading && !showNameForm) {
+  // Show spinner while checking profile after authentication
+  if (
+    isAuthenticated &&
+    (profileLoading || (!showNameForm && !profileFetched))
+  ) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -90,7 +90,9 @@ export default function VolunteerLogin() {
         <div className="max-w-6xl mx-auto px-4 py-4">
           <button
             type="button"
-            onClick={() => navigate({ to: "/login" })}
+            onClick={() => {
+              window.location.href = "/login";
+            }}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -112,24 +114,18 @@ export default function VolunteerLogin() {
                   Volunteer Login
                 </h1>
                 <p className="text-muted-foreground mt-2 text-sm">
-                  Pick up and deliver food donations to NGOs and communities
+                  Join our volunteer network to pick up and deliver surplus food
                   across Maharashtra.
                 </p>
               </div>
 
               <div className="space-y-3 mb-8">
                 {[
+                  { icon: Truck, text: "Accept pickup assignments near you" },
+                  { icon: MapPin, text: "Get optimized routes for deliveries" },
                   {
-                    icon: Bike,
-                    text: "Claim food pickup assignments near you",
-                  },
-                  {
-                    icon: Clock,
-                    text: "Flexible scheduling — work on your time",
-                  },
-                  {
-                    icon: Award,
-                    text: "Earn recognition for your contributions",
+                    icon: Star,
+                    text: "Build your volunteer rating and impact",
                   },
                 ].map(({ icon: Icon, text }) => (
                   <div
@@ -167,14 +163,14 @@ export default function VolunteerLogin() {
                       htmlFor="volunteer-name"
                       className="block text-sm font-medium text-foreground mb-1"
                     >
-                      Your Full Name
+                      Your Name
                     </label>
                     <input
                       id="volunteer-name"
                       type="text"
                       value={volunteerName}
                       onChange={(e) => setVolunteerName(e.target.value)}
-                      placeholder="e.g. Suresh Kumar"
+                      placeholder="e.g. Rahul Sharma"
                       className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-400"
                       required
                     />
@@ -205,7 +201,7 @@ export default function VolunteerLogin() {
               ) : (
                 <div className="flex items-center justify-center gap-2 text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Redirecting to dashboard…</span>
+                  <span className="text-sm">Verifying credentials…</span>
                 </div>
               )}
             </div>

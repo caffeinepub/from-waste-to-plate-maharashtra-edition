@@ -14,7 +14,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { loadConfig } from "../config";
@@ -232,19 +231,17 @@ export function InternetIdentityProvider({
       });
   }, [authClient, setErrorMessage]);
 
-  const initializedRef = useRef(false);
-
   useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-
     let cancelled = false;
     void (async () => {
       try {
         setStatus("initializing");
-        const existingClient = await createAuthClient(createOptions);
-        if (cancelled) return;
-        setAuthClient(existingClient);
+        let existingClient = authClient;
+        if (!existingClient) {
+          existingClient = await createAuthClient(createOptions);
+          if (cancelled) return;
+          setAuthClient(existingClient);
+        }
         const isAuthenticated = await existingClient.isAuthenticated();
         if (cancelled) return;
         if (isAuthenticated) {
@@ -265,7 +262,7 @@ export function InternetIdentityProvider({
     return () => {
       cancelled = true;
     };
-  }, [createOptions]);
+  }, [createOptions, authClient]);
 
   const value = useMemo<ProviderValue>(
     () => ({
